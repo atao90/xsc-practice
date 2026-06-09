@@ -8,6 +8,15 @@
         <van-icon name="arrow" color="#999" />
       </div>
 
+      <div class="section-title" style="margin-top:20px;">🧠 公式练习</div>
+      <div class="formula-practice" @click="goFormulaPractice">
+        <div>
+          <div class="practice-title">公式应用与记忆</div>
+          <div class="practice-desc">随机练习小学常用数学公式</div>
+        </div>
+        <van-icon name="arrow" color="#999" />
+      </div>
+
       <div class="section-title" style="margin-top:20px;">📝 年级练习</div>
       <div class="grade-grid">
         <div
@@ -31,6 +40,14 @@ import { useUser } from '@/shared/user'
 const router = useRouter()
 const { currentUser } = useUser()
 
+function goFormulaPractice() {
+  if (!currentUser.value) {
+    showToast('请先在「我的」页面输入姓名')
+    return
+  }
+  router.push({ path: '/practice', query: { subject: '数学', type: '公式' } })
+}
+
 function goGradePractice(grade: number) {
   if (!currentUser.value) {
     showToast('请先在「我的」页面输入姓名')
@@ -50,6 +67,13 @@ function goGradePractice(grade: number) {
   border-radius: 12px; padding: 20px; color: #fff;
 }
 .preview-text { font-size: 15px; }
+.formula-practice {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #fff; border-radius: 12px; padding: 18px 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.practice-title { font-size: 15px; font-weight: 600; }
+.practice-desc { font-size: 12px; color: #999; margin-top: 4px; }
 .grade-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .grade-card {
   background: #fff; border-radius: 12px; padding: 20px 16px;

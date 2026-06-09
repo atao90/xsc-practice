@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
+    "validate:data": "node scripts/validate-seed-data.mjs",
     "preview": "vite preview",
     "cap:add:android": "cap add android",
     "cap:sync": "npm run build && cap sync android",

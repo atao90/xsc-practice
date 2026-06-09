@@ -80,6 +80,12 @@ function createTables(db: SqlJsDatabase) {
       description TEXT DEFAULT ''
     )
   `)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS app_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `)
 }
 
 function persist() {
@@ -92,17 +98,25 @@ function persist() {
 // Question API
 export async function importQuestions(questions: Omit<Question, 'id'>[]) {
   const d = await getDb()
-  const stmt = d.prepare(
-    'INSERT OR REPLACE INTO questions (id, subject, question_type, grade, difficulty, content, answer, explanation) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  const insertStmt = d.prepare(
+    'INSERT INTO questions (subject, question_type, grade, difficulty, content, answer, explanation) VALUES (?, ?, ?, ?, ?, ?, ?)'
   )
   for (const q of questions) {
-    stmt.run([
-      (q as Question).id || null,
+    const content = JSON.stringify(q.content)
+    const answer = JSON.stringify(q.answer)
+    const existsStmt = d.prepare(
+      'SELECT id FROM questions WHERE subject = ? AND question_type = ? AND grade = ? AND content = ? AND answer = ? LIMIT 1'
+    )
+    existsStmt.bind([q.subject, q.question_type, q.grade, content, answer])
+    const exists = existsStmt.step()
+    existsStmt.free()
+    if (exists) continue
+    insertStmt.run([
       q.subject, q.question_type, q.grade, q.difficulty,
-      JSON.stringify(q.content), JSON.stringify(q.answer), q.explanation
+      content, answer, q.explanation
     ])
   }
-  stmt.free()
+  insertStmt.free()
   persist()
 }
 
@@ -110,11 +124,16 @@ export async function getQuestions(
   subject: string,
   questionType: string,
   limit = 20,
-  excludeIds: number[] = []
+  excludeIds: number[] = [],
+  grade?: number
 ): Promise<Question[]> {
   const d = await getDb()
   let sql = 'SELECT * FROM questions WHERE subject = ? AND question_type = ?'
   const params: (string | number)[] = [subject, questionType]
+  if (grade) {
+    sql += ' AND grade = ?'
+    params.push(grade)
+  }
   if (excludeIds.length > 0) {
     sql += ` AND id NOT IN (${excludeIds.map(() => '?').join(',')})`
     params.push(...excludeIds)
@@ -153,15 +172,19 @@ export async function getQuestionById(id: number): Promise<Question | null> {
   return null
 }
 
-export async function getWrongQuestionIds(userId: number, subject: string, questionType: string): Promise<number[]> {
+export async function getWrongQuestionIds(userId: number, subject: string, questionType: string, grade?: number): Promise<number[]> {
   const d = await getDb()
-  const stmt = d.prepare(
-    `SELECT DISTINCT q.id FROM questions q
+  let sql = `SELECT DISTINCT q.id FROM questions q
      INNER JOIN answer_records ar ON q.id = ar.question_id
      WHERE ar.user_id = ? AND ar.is_correct = 0
      AND q.subject = ? AND q.question_type = ?`
-  )
-  stmt.bind([userId, subject, questionType])
+  const params: (number | string)[] = [userId, subject, questionType]
+  if (grade) {
+    sql += ' AND q.grade = ?'
+    params.push(grade)
+  }
+  const stmt = d.prepare(sql)
+  stmt.bind(params)
   const ids: number[] = []
   while (stmt.step()) {
     ids.push(stmt.getAsObject().id as number)
@@ -289,13 +312,20 @@ export async function getProgress(userId: number): Promise<Progress[]> {
 // Formula API
 export async function importFormulas(formulas: Omit<MathFormula, 'id'>[]) {
   const d = await getDb()
-  const stmt = d.prepare(
-    'INSERT OR REPLACE INTO math_formulas (id, grade, category, name, formula, description) VALUES (?, ?, ?, ?, ?, ?)'
+  const insertStmt = d.prepare(
+    'INSERT INTO math_formulas (grade, category, name, formula, description) VALUES (?, ?, ?, ?, ?)'
   )
   for (const f of formulas) {
-    stmt.run([(f as MathFormula).id || null, f.grade, f.category, f.name, f.formula, f.description])
+    const existsStmt = d.prepare(
+      'SELECT id FROM math_formulas WHERE grade = ? AND category = ? AND name = ? LIMIT 1'
+    )
+    existsStmt.bind([f.grade, f.category, f.name])
+    const exists = existsStmt.step()
+    existsStmt.free()
+    if (exists) continue
+    insertStmt.run([f.grade, f.category, f.name, f.formula, f.description])
   }
-  stmt.free()
+  insertStmt.free()
   persist()
 }
 
@@ -325,4 +355,27 @@ export async function getQuestionCount(): Promise<number> {
   const result = stmt.getAsObject() as { count: number }
   stmt.free()
   return result.count
+}
+
+export async function getMeta(key: string): Promise<string | null> {
+  const d = await getDb()
+  const stmt = d.prepare('SELECT value FROM app_meta WHERE key = ?')
+  stmt.bind([key])
+  if (stmt.step()) {
+    const row = stmt.getAsObject() as { value: string }
+    stmt.free()
+    return row.value
+  }
+  stmt.free()
+  return null
+}
+
+export async function setMeta(key: string, value: string) {
+  const d = await getDb()
+  d.run(
+    `INSERT INTO app_meta (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    [key, value]
+  )
+  persist()
 }

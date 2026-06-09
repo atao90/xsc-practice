@@ -164,6 +164,8 @@ const correctRate = computed(() => {
 onMounted(async () => {
   const subject = (route.query.subject as string) || '语文'
   const type = (route.query.type as string) || '拼音'
+  const gradeValue = Number(route.query.grade)
+  const grade = Number.isInteger(gradeValue) && gradeValue >= 1 && gradeValue <= 6 ? gradeValue : undefined
 
   session.value.subject = subject as Subject
   session.value.questionType = type as QuestionType
@@ -173,7 +175,7 @@ onMounted(async () => {
     return
   }
 
-  const wrongIds = await getWrongQuestionIds(currentUser.value.id, subject, type)
+  const wrongIds = await getWrongQuestionIds(currentUser.value.id, subject, type, grade)
   let questions: Question[] = []
 
   if (wrongIds.length > 0) {
@@ -187,7 +189,7 @@ onMounted(async () => {
 
   if (questions.length < 20) {
     const excludeIds = questions.map(q => q.id)
-    const more = await getQuestions(subject, type, 20 - questions.length, excludeIds)
+    const more = await getQuestions(subject, type, 20 - questions.length, excludeIds, grade)
     questions = [...questions, ...more]
   }
 
