@@ -33,10 +33,6 @@ jobs:
 
       - name: Build web app
         run: npm run build
-        env:
-          VITE_ZHIPU_API_KEY: ${{ secrets.VITE_ZHIPU_API_KEY }}
-          VITE_ZHIPU_API_URL: https://open.bigmodel.cn/api/paas/v4/chat/completions
-          VITE_ZHIPU_MODEL: glm-4-flash
 
       - name: Sync Capacitor Android project
         run: npx cap sync android
