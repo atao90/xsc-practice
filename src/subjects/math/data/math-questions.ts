@@ -4,7 +4,16 @@ type SeedQuestion = Omit<Question, 'id'>
 
 type OptionValue = string | number
 
+let questionOrder = 0
+
 function choiceQuestion(question_type: '计算' | '公式', grade: number, difficulty: number, stem: string, options: OptionValue[], correctIndex: number, explanation: string): SeedQuestion {
+  const targetCorrectIndex = questionOrder % options.length
+  questionOrder += 1
+
+  const reorderedOptions = [...options]
+  const [correctOption] = reorderedOptions.splice(correctIndex, 1)
+  reorderedOptions.splice(targetCorrectIndex, 0, correctOption)
+
   return {
     subject: '数学',
     question_type,
@@ -12,9 +21,9 @@ function choiceQuestion(question_type: '计算' | '公式', grade: number, diffi
     difficulty,
     content: {
       stem,
-      options: options.map((text, index) => ({ key: String.fromCharCode(65 + index), text: String(text) }))
+      options: reorderedOptions.map((text, index) => ({ key: String.fromCharCode(65 + index), text: String(text) }))
     },
-    answer: { type: 'choice', value: String.fromCharCode(65 + correctIndex) },
+    answer: { type: 'choice', value: String.fromCharCode(65 + targetCorrectIndex) },
     explanation
   }
 }

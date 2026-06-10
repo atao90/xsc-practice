@@ -52,9 +52,9 @@ ${input.explanation || '暂无'}
 请按以下结构回答：
 1. 题目在考什么
 2. 我的答案为什么不对
-3. 正确解法/思路
-4. 易错点提醒
-5. 类似题的做题方法`
+3. 正确解法/思路`
+// 4. 易错点提醒
+// 5. 类似题的做题方法
 }
 
 export async function explainWrongQuestion(
